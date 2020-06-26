@@ -1,5 +1,5 @@
 # USAGE
-# python train_model.py --encodings output_recognizer/encodings.pickle --recognizer output_recognizer/recognizer.pickle --le output_recognizer/le.pickle
+# python train_recognizer.py --encodings output_recognizer/encodings.pickle --recognizer output_recognizer/recognizer.pickle --le output_recognizer/le.pickle
 
 # import the necessary packages
 from sklearn.preprocessing import LabelEncoder

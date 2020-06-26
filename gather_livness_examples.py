@@ -1,5 +1,5 @@
 # USAGE
-# python gather_examples.py --input liveness_videos/<video_name>.mp4 --input2 liveness_images/<folder name> --output dataset_liveness/<real or fake>/<suitable name> --output2 dataset_liveness/<real or fake>/<suitable name> --detector face_detector --skip <try 3, try to take around 150 images for 20s video> 
+# python gather_liveness_examples.py --input liveness_videos/<video_name>.mp4 --input2 liveness_images/<folder name> --output dataset_liveness/<real or fake>/<suitable name> --output2 dataset_liveness/<real or fake>/<suitable name> --detector face_detector --skip <try 3, try to take around 150 images for 20s video> 
 
 
 # import the necessary packages

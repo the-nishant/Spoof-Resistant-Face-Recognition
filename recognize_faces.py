@@ -1,5 +1,5 @@
 # USAGE
-# python recognize_faces_video.py --recognizer output_recognizer/recognizer.pickle --le output_recognizer/le.pickle --detector face_detector 
+# python recognize_faces.py --recognizer output_recognizer/recognizer.pickle --le output_recognizer/le.pickle --detector face_detector 
 
 # import the necessary packages
 from imutils.video import VideoStream
