@@ -1,10 +1,8 @@
 # USAGE
-# python recognize_faces_video.py --recognizer output/recognizer.pickle --le output/le.pickle --detector face_detector 
-# python recognize_faces_video.py --output output/jurassic_park_trailer_output.avi --display 0
+# python recognize_faces_video.py --recognizer output_recognizer/recognizer.pickle --le output_recognizer/le.pickle --detector face_detector 
 
 # import the necessary packages
 from imutils.video import VideoStream
-from imutils.video import FPS
 import face_recognition
 import argparse
 import imutils
@@ -16,18 +14,11 @@ import numpy as np
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-o", "--output", type=str,
-	help="path to output video")
-ap.add_argument("-y", "--display", type=int, default=1,
-	help="whether or not to display output frame to screen")
-ap.add_argument("-d", "--detector", type=str, required=True,
-    help="path to OpenCV's deep learning face detector")
-ap.add_argument("-r", "--recognizer", required=True,
-    help="path to model trained to recognize faces")
-ap.add_argument("-l", "--le", required=True,
-    help="path to label encoder")
-ap.add_argument("-c", "--confidence", type=float, default=0.5,
-    help="minimum probability to filter weak detections")
+ap.add_argument("-o", "--output", type=str, help="path to output video")
+ap.add_argument("-d", "--detector", type=str, required=True, help="path to OpenCV's deep learning face detector")
+ap.add_argument("-r", "--recognizer", required=True, help="path to model trained to recognize faces")
+ap.add_argument("-l", "--le", required=True, help="path to label encoder")
+ap.add_argument("-c", "--confidence", type=float, default=0.5, help="minimum probability to filter weak detections")
 args = vars(ap.parse_args())
 
 # load our serialized face detector from disk
@@ -45,10 +36,7 @@ le = pickle.loads(open(args["le"], "rb").read())
 # allow the camera sensor to warm up
 print("[INFO] starting video stream...")
 vs = VideoStream(src=0).start()
-writer = None
 time.sleep(2.0)
-
-fps = FPS().start()
 
 # loop over frames from the video file stream
 while True:
@@ -89,9 +77,13 @@ while True:
 	        endX = min(w, endX)
 	        endY = min(h, endY)
 
+            # save the bounding  box for face recognition.
 	        boxes.append((startY, endX, endY, startX))
 
+	# compute the facial embedding for the faces
 	encodings = face_recognition.face_encodings(rgb, boxes)
+
+	# initialize the list of names and their probabilities
 	names = []
 	probs = []
 
@@ -114,41 +106,13 @@ while True:
 		cv2.putText(frame, "{}: {:.2f}%".format(name, proba*100), (left, y), cv2.FONT_HERSHEY_SIMPLEX,
 			0.75, (0, 255, 0), 2)
 
-	# update the FPS counter
-	fps.update()
+	cv2.imshow("Frame", frame)
+	key = cv2.waitKey(1) & 0xFF
 
-	# if the video writer is None *AND* we are supposed to write
-	# the output video to disk initialize the writer
-	if writer is None and args["output"] is not None:
-		fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-		writer = cv2.VideoWriter(args["output"], fourcc, 20,
-			(frame.shape[1], frame.shape[0]), True)
-
-	# if the writer is not None, write the frame with recognized
-	# faces t odisk
-	if writer is not None:
-		writer.write(frame)
-
-
-	# check to see if we are supposed to display the output frame to
-	# the screen
-	if args["display"] > 0:
-		cv2.imshow("Frame", frame)
-		key = cv2.waitKey(1) & 0xFF
-
-		# if the `q` key was pressed, break from the loop
-		if key == ord("q"):
-			break
-
-# stop the timer and display FPS information
-fps.stop()
-print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+	# if the `q` key was pressed, break from the loop
+	if key == ord("q"):
+		break
 
 # do a bit of cleanup
 cv2.destroyAllWindows()
 vs.stop()
-
-# check to see if the video writer point needs to be released
-if writer is not None:
-	writer.release()

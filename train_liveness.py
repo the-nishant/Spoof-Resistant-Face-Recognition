@@ -1,5 +1,5 @@
 # USAGE
-# python train_liveness.py --dataset dataset --model liveness.model --le le.pickle
+# python train_liveness.py --dataset dataset_liveness --model output_liveness/liveness.model --le output_liveness/le.pickle
 
 # set the matplotlib backend so figures can be saved in the background
 import matplotlib
@@ -23,14 +23,10 @@ import os
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-d", "--dataset", required=True,
-	help="path to input dataset")
-ap.add_argument("-m", "--model", type=str, required=True,
-	help="path to trained model")
-ap.add_argument("-l", "--le", type=str, required=True,
-	help="path to label encoder")
-ap.add_argument("-p", "--plot", type=str, default="plot.png",
-	help="path to output loss/accuracy plot")
+ap.add_argument("-d", "--dataset", required=True, help="path to input dataset")
+ap.add_argument("-m", "--model", type=str, required=True, help="path to trained model")
+ap.add_argument("-l", "--le", type=str, required=True, help="path to label encoder")
+ap.add_argument("-p", "--plot", type=str, default="plot.png", help="path to output loss/accuracy plot")
 args = vars(ap.parse_args())
 
 # initialize the initial learning rate, batch size, and number of
@@ -67,11 +63,6 @@ le = LabelEncoder()
 labels = le.fit_transform(labels)
 labels = to_categorical(labels, 2)
 
-# partition the data into training and testing splits using 75% of
-# the data for training and the remaining 25% for testing
-'''(trainX, testX, trainY, testY) = train_test_split(data, labels,
-	test_size=0.25, random_state=42)'''
-
 # construct the training image generator for data augmentation
 aug = ImageDataGenerator(rotation_range=20, zoom_range=0.15,
 	width_shift_range=0.2, height_shift_range=0.2, shear_range=0.15,
@@ -91,25 +82,11 @@ H = model.fit(aug.flow(data, labels, batch_size=BS),
 	steps_per_epoch=len(data) // BS,
 	epochs=EPOCHS)
 
-'''
-# train the network
-print("[INFO] training network for {} epochs...".format(EPOCHS))
-H = model.fit(aug.flow(trainX, trainY, batch_size=BS), 
-	validation_data=(testX, testY), steps_per_epoch=len(trainX) // BS,
-	epochs=EPOCHS)'''
-
 # evaluate the network
 print("[INFO] evaluating network...")
 predictions = model.predict(data, batch_size=BS)
 print(classification_report(labels.argmax(axis=1),
 	predictions.argmax(axis=1), target_names=le.classes_))
-
-'''
-# evaluate the network
-print("[INFO] evaluating network...")
-predictions = model.predict(testX, batch_size=BS)
-print(classification_report(testY.argmax(axis=1),
-	predictions.argmax(axis=1), target_names=le.classes_))'''
 
 # save the network to disk
 print("[INFO] serializing network to '{}'...".format(args["model"]))
@@ -124,9 +101,7 @@ f.close()
 plt.style.use("ggplot")
 plt.figure()
 plt.plot(np.arange(0, EPOCHS), H.history["loss"], label="train_loss")
-#plt.plot(np.arange(0, EPOCHS), H.history["val_loss"], label="val_loss")
 plt.plot(np.arange(0, EPOCHS), H.history["accuracy"], label="train_acc")
-#plt.plot(np.arange(0, EPOCHS), H.history["val_accuracy"], label="val_acc")
 plt.title("Training Loss and Accuracy on Dataset")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")

@@ -1,5 +1,5 @@
 # USAGE
-# python full_pipeline.py --model liveness.model --le le.pickle --detector face_detector  --recognizer output/recognizer.pickle  --le-recognizer output/le.pickle
+# python full_pipeline.py --livemodel output_liveness/liveness.model --le-liveness output_liveness/le.pickle --detector face_detector  --recognizer output_recognizer/recognizer.pickle  --le-recognizer output_recognizer/le.pickle
 
 # import the necessary packages
 from imutils.video import VideoStream
@@ -15,22 +15,23 @@ import time
 import cv2
 import os
 import copy
+import dlib
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-m", "--model", type=str, required=True, help="path to trained livness model")
-ap.add_argument("-l", "--le", type=str, required=True, help="path to label encoder of liveness model")
+ap.add_argument("-m", "--livemodel", type=str, required=True, help="path to trained livness model")
+ap.add_argument("-l", "--le-liveness", type=str, required=True, help="path to label encoder of liveness model")
 ap.add_argument("-d", "--detector", type=str, required=True, help="path to OpenCV's deep learning face detector")
 ap.add_argument("-c", "--confidence", type=float, default=0.5,  help="minimum probability to filter weak detections")
 ap.add_argument("-r", "--recognizer", required=True, help="path to model trained to recognize faces")
 ap.add_argument("-b", "--le-recognizer", required=True, help="path to label encoder of recognizer model")
-ap.add_argument("-t", "--confidence-recognizer", type=float, default=0.5, help="minimum probability to filter weak recognitions")
 args = vars(ap.parse_args())
 
 #only grow tensorflow memory usage as is needed the process(good for low memory GPUs)
 physical_devices = list_physical_devices('GPU')
 try:
     experimental.set_memory_growth(physical_devices[0], True)
+    dlib.DLIB_USE_CUDA = True
 except:
     # Invalid device or cannot modify virtual devices once initialized.
     pass
@@ -44,14 +45,13 @@ net = cv2.dnn.readNetFromCaffe(protoPath, modelPath)
 
 # load the liveness detector model and label encoder from disk
 print("[INFO] loading liveness detector...")
-model = load_model(args["model"])
-le = pickle.loads(open(args["le"], "rb").read())
+livemodel = load_model(args["livemodel"])
+le_liveness = pickle.loads(open(args["le_liveness"], "rb").read())
 
 # load the actual face recognition model along with the label encoder
 print("[INFO] loading face recognizer...")
 recognizer = pickle.loads(open(args["recognizer"], "rb").read())
 le_recognizer = pickle.loads(open(args["le_recognizer"], "rb").read())
-print(le_recognizer.classes_)
 
 # initialize the video stream and allow the camera sensor to warmup
 print("[INFO] starting video stream...")
@@ -117,9 +117,9 @@ while True:
 
             # pass the face ROI through the trained liveness detector
             # model to determine if the face is "real" or "fake"
-            preds = model.predict(face)[0]
+            preds = livemodel.predict(face)[0]
             j = np.argmax(preds)
-            label = le.classes_[j]
+            label = le_liveness.classes_[j]
 
             # draw the label and bounding box on the frame if fake, else save
             # the bounding  box for face recognition. Threshold for real is 0.75
@@ -130,6 +130,7 @@ while True:
                 cv2.rectangle(frame, (startX, startY), (endX, endY),
                     (0, 0, 255), 2)
             else:
+                #save the bounding  box for face recognition.
                 boxes.append((startY, endX, endY, startX))
 
     # compute the facial embedding for the faces

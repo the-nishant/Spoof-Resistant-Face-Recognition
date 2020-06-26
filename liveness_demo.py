@@ -1,5 +1,5 @@
 # USAGE
-# python liveness_demo.py --model liveness.model --le le.pickle --detector face_detector
+# python liveness_demo.py --model output_liveness/liveness.model --le output_liveness/le.pickle --detector face_detector
 
 # import the necessary packages
 from imutils.video import VideoStream
@@ -15,14 +15,10 @@ import os
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-m", "--model", type=str, required=True,
-	help="path to trained model")
-ap.add_argument("-l", "--le", type=str, required=True,
-	help="path to label encoder")
-ap.add_argument("-d", "--detector", type=str, required=True,
-	help="path to OpenCV's deep learning face detector")
-ap.add_argument("-c", "--confidence", type=float, default=0.5,
-	help="minimum probability to filter weak detections")
+ap.add_argument("-m", "--model", type=str, required=True, help="path to trained model")
+ap.add_argument("-l", "--le", type=str, required=True, help="path to label encoder")
+ap.add_argument("-d", "--detector", type=str, required=True, help="path to OpenCV's deep learning face detector")
+ap.add_argument("-c", "--confidence", type=float, default=0.5,help="minimum probability to filter weak detections")
 args = vars(ap.parse_args())
 
 # load our serialized face detector from disk

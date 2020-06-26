@@ -1,5 +1,5 @@
 # USAGE
-# python encode_faces.py --dataset dataset_recognizer --dataset2 dataset2_recognizer --encodings output/encodings.pickle --detector face_detector
+# python encode_faces.py --dataset dataset_recognizer --dataset2 dataset2_recognizer --encodings output_reognizer/encodings.pickle --detector face_detector
 
 # import the necessary packages
 from imutils import paths

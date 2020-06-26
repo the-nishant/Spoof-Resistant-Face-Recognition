@@ -1,6 +1,5 @@
 # USAGE
-# python train_model.py --encodings output/encodings.pickle \
-#	--recognizer output/recognizer.pickle --le output/le.pickle
+# python train_model.py --encodings output_recognizer/encodings.pickle --recognizer output_recognizer/recognizer.pickle --le output_recognizer/le.pickle
 
 # import the necessary packages
 from sklearn.preprocessing import LabelEncoder
@@ -12,12 +11,9 @@ import pickle
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-e", "--encodings", required=True,
-	help="path to serialized db of facial embeddings")
-ap.add_argument("-r", "--recognizer", required=True,
-	help="path to output model trained to recognize faces")
-ap.add_argument("-l", "--le", required=True,
-	help="path to output label encoder")
+ap.add_argument("-e", "--encodings", required=True, help="path to serialized database of facial embeddings")
+ap.add_argument("-r", "--recognizer", required=True, help="path to output model trained to recognize faces")
+ap.add_argument("-l", "--le", required=True, help="path to output label encoder")
 args = vars(ap.parse_args())
 
 # load the face embeddings
@@ -29,6 +25,7 @@ print("[INFO] encoding labels...")
 le = LabelEncoder()
 labels = le.fit_transform(data["names"])
 
+#convert the encodings in a numpy array and reshape them to feed into our classifier
 data["encodings"] = np.array(data["encodings"]).reshape(-1,128)
 
 # train the model used to accept the 128-d embeddings of the face and
