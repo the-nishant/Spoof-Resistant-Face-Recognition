@@ -3,11 +3,10 @@
 
 # import the necessary packages
 from imutils.video import VideoStream
-from imutils.video import FPS
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.models import load_model
+from tensorflow.config import list_physical_devices, experimental
 import face_recognition
-import dlib
 import numpy as np
 import argparse
 import imutils
@@ -15,35 +14,26 @@ import pickle
 import time
 import cv2
 import os
-import tensorflow as tf
-
-physical_devices = tf.config.list_physical_devices('GPU')
-try:
-  tf.config.experimental.set_memory_growth(physical_devices[0], True)
-except:
-  # Invalid device or cannot modify virtual devices once initialized.
-  pass
-
-
-dlib.DLIB_USE_CUDA = True
+import copy
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-m", "--model", type=str, required=True,
-    help="path to trained model")
-ap.add_argument("-l", "--le", type=str, required=True,
-    help="path to label encoder")
-ap.add_argument("-d", "--detector", type=str, required=True,
-    help="path to OpenCV's deep learning face detector")
-ap.add_argument("-c", "--confidence", type=float, default=0.5,
-    help="minimum probability to filter weak detections")
-ap.add_argument("-r", "--recognizer", required=True,
-    help="path to model trained to recognize faces")
-ap.add_argument("-b", "--le-recognizer", required=True,
-    help="path to label encoder")
-ap.add_argument("-t", "--confidence-recognizer", type=float, default=0.5,
-    help="minimum probability to filter weak detections")
+ap.add_argument("-m", "--model", type=str, required=True, help="path to trained livness model")
+ap.add_argument("-l", "--le", type=str, required=True, help="path to label encoder of liveness model")
+ap.add_argument("-d", "--detector", type=str, required=True, help="path to OpenCV's deep learning face detector")
+ap.add_argument("-c", "--confidence", type=float, default=0.5,  help="minimum probability to filter weak detections")
+ap.add_argument("-r", "--recognizer", required=True, help="path to model trained to recognize faces")
+ap.add_argument("-b", "--le-recognizer", required=True, help="path to label encoder of recognizer model")
+ap.add_argument("-t", "--confidence-recognizer", type=float, default=0.5, help="minimum probability to filter weak recognitions")
 args = vars(ap.parse_args())
+
+#only grow tensorflow memory usage as is needed the process(good for low memory GPUs)
+physical_devices = list_physical_devices('GPU')
+try:
+    experimental.set_memory_growth(physical_devices[0], True)
+except:
+    # Invalid device or cannot modify virtual devices once initialized.
+    pass
 
 # load our serialized face detector from disk
 print("[INFO] loading face detector...")
@@ -68,8 +58,6 @@ print("[INFO] starting video stream...")
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
 
-fps = FPS().start()
-
 # loop over the frames from the video stream
 while True:
     # grab the frame from the threaded video stream and resize it
@@ -84,11 +72,12 @@ while True:
         cv2.resize(frame, (300, 300)), 1.0, (300, 300),
         (104.0, 177.0, 123.0), swapRB=False, crop=False)
 
-
     # pass the blob through the network and obtain the detections and
-    # predictions
+    # predictions.
     net.setInput(blob)
     detections = net.forward()
+
+    #Initialize boxes for face recognition
     boxes = []
 
     # loop over the detections
@@ -111,14 +100,20 @@ while True:
             endX = min(w, endX)
             endY = min(h, endY)
 
-            # extract the face ROI and then preproces it in the exact
-            # same manner as our training data
+            # extract the face ROI and make a copy for passing it to 
+            # face recognizer if needed
             face = frame[startY:endY, startX:endX]
-            face2 = face.copy()
-            face = cv2.resize(face, (32, 32))
-            face = face.astype("float") / 255.0
-            face = img_to_array(face)
-            face = np.expand_dims(face, axis=0)
+            face2 = copy.deepcopy(face)
+
+            # Preproces the face ROI in the exact same manner as our 
+            # training livenss data
+            try:
+                face = cv2.resize(face, (32, 32))
+                face = face.astype("float") / 255.0
+                face = img_to_array(face)
+                face = np.expand_dims(face, axis=0)
+            except:
+                raise Exception("Your face is too close to the camera. Please move your face slightly away from it and try again")
 
             # pass the face ROI through the trained liveness detector
             # model to determine if the face is "real" or "fake"
@@ -126,7 +121,8 @@ while True:
             j = np.argmax(preds)
             label = le.classes_[j]
 
-            # draw the label and bounding box on the frame
+            # draw the label and bounding box on the frame if fake, else save
+            # the bounding  box for face recognition. Threshold for real is 0.75
             if label == "fake" or preds[1]<0.75:
                 label = "{}: {:.4f}".format("fake", preds[0])
                 cv2.putText(frame, label, (startX, startY - 10),
@@ -135,9 +131,11 @@ while True:
                     (0, 0, 255), 2)
             else:
                 boxes.append((startY, endX, endY, startX))
-    
 
+    # compute the facial embedding for the faces
     encodings = face_recognition.face_encodings(rgb, boxes)
+
+    # initialize the list of names and their probabilities
     names = []
     probs = []
 
@@ -160,9 +158,6 @@ while True:
         cv2.putText(frame, "{}: {:.2f}%".format(name, proba*100), (left, y), cv2.FONT_HERSHEY_SIMPLEX,
             0.75, (0, 255, 0), 2)
 
-    # update the FPS counter
-    fps.update()
-
     # show the output frame and wait for a key press
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF
@@ -170,11 +165,6 @@ while True:
     # if the `q` key was pressed, break from the loop
     if key == ord("q"):
         break
-
-# stop the timer and display FPS information
-fps.stop()
-print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 
 # do a bit of cleanup
 cv2.destroyAllWindows()
